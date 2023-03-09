@@ -1,0 +1,267 @@
+!=========N阶缺陷模态法==========
+finish
+/clear
+
+s=60     !跨度
+d=300     !跨度的1/d施加缺陷
+
+
+/CWD,E:\ANSYS\dkd   !!改变工作目录       
+/filename,ANALISIS_wangqiao 
+/title,ANALISIS_wangqiao 
+
+/prep7
+
+*use,E:\ANSYS\dkd\color.mac
+
+*use,E:\ANSYS\dkd\jiedian.mac
+
+*USE,E:\ANSYS\dkd\real_fini_1.mac
+!!引入材料非线性
+!*use,E:\ANSYS\dkd\TB.mac
+*get,kp_num,kp,0,count           !!参考《参数化》48页
+
+NKPT,,all                       !!把关键点转化为节点？？？？？
+
+*USE,E:\ANSYS\dkd\Creat_Lines.mac
+!===================================================
+allsel
+cm,node_main,node         !全部节点
+
+
+!lsel,s,real,,1,10 !选择撑杆与索之外的单元
+!lsel,a,real,,12,13 !增加选择
+!ksll,s
+!nslk,s
+!*GET,support_NUM_Z_MIN,NODE,,MNLOC,Z      !返回所选集中节点最小Z坐标值
+!lsel,s,type,,1,2 !选择撑杆与索之外的单元
+!ksll,r   
+!nslk,r      
+!nsel,u,loc,z,support_NUM_Z_MIN    !!U是在子集中去掉选中的，删除  支座节点 
+!nsel,u,loc,z,CABLE_NUM_Z_1    !!U是在子集中去掉选中的，删除  支座节点  
+!nsel,u,loc,z,CABLE_NUM_Z_2    !!U是在子集中去掉选中的，删除  支座节点  
+!nsel,u,loc,z,CABLE_NUM_Z_3    !!U是在子集中去掉选中的，删除  支座节点  
+!nsel,u,loc,z,CABLE_NUM_Z_4    !!U是在子集中去掉选中的，删除  支座节点                    
+!cm,node_defect,node                       !去除支座节点，剩余的节点
+
+allsel
+
+!===================================================
+
+lesize,all,,,1         !!将一根线划分为1个单元
+lmesh,all              !!网格划分
+nummrg,node            !!重合节点合并
+numcmp,node             !!压缩节点编号
+
+*USE,E:\ANSYS\dkd\boundaryconditions_1.MAC 
+
+
+FCUM,ADD
+
+*use,E:\ANSYS\dkd\equiforce_dead_and_live.mac,1
+
+acel,,,9.8*1   !!重力加速度
+allsel
+!===========================================================================
+/solu              !!进入求解层
+pstres,on          !!打开预应力开关  
+nsubst,1           !!子步数为1步   
+solve   
+FINISH
+!===========================================================================  
+/solu              !!进入求解层
+antype,buckle      !!定义求解类型为特征值屈曲分析 
+bucopt,subsp,20    !!定义特征值提取方法为lanb，提取特征值数为20   
+mxpand,20,0,0,1,0.001   
+outres,all,all     !!定义输出全部荷载步结果  
+solve   
+FINISH
+
+
+ 
+allsel
+/post1
+!=======================获取特征值，写入文件=====================            
+m=100     
+*dim,mode,array,m                    !!定义名为“mode”的1维数组(m行1列)，用于储存各阶模态
+*do,i,1,m                            !!对各阶模态循环
+*get,mode(i),mode,i,freq             !!提取第i阶特征值，赋予 1维数组“mode” 的第i行,,,获取第N阶屈曲模态特征值（屈曲荷载系数）
+*enddo                               !!此时“mode”已经赋满了值
+
+!!======================施加缺陷（Num_Mode阶）一致缺陷=====================================
+      
+set,1,2                         !!循环读取每阶模态，寻找各阶模态的最大位移
+ALLSEL
+NSORT,U,SUM,0,0,ALL             !!将节点结果按照 合位移 顺序排列
+*GET,MAX_U,SORT,0,IMAX          !!取MAX_U=节点数据中最大值对应的节点编号
+*GET,USUM,NODE,MAX_U,U,SUM  !!USUM_%b%=编号为MAX_U的节点的合位移(寻找各阶模态最大和位移，为施加缺陷做准备)，强制置换《参数化》P26
+
+      
+/prep7
+cmsel,s,node_main      !选择元件，不含支座节点
+upgeom,s/d/USUM,1,2,ANALISIS_wangqiao,rst   !!模态阶数与大小。注意是按照位移的倍数进行放大。施加缺陷(《参数化》P174)
+        
+        
+        
+        
+        
+        
+!!=====================获取缺陷坐标=====================================
+        
+allsel
+        
+cmsel,s,node_main      !!选中 端节点（所有节点，包括支座节点）
+        
+*get,Num_endnode,node,0,count  !!获取 端节点 的个数
+        
+*dim,coodinate_x,,Num_endnode          !!定义名为“coodinate_x”的1维数组，用于储存 端节点的x坐标
+*dim,coodinate_y,,Num_endnode          !!定义名为“coodinate_y”的1维数组，用于储存 端节点的y坐标
+*dim,coodinate_z,,Num_endnode          !!定义名为“coodinate_z”的1维数组，用于储存 端节点的z坐标
+        
+*do,i,1,Num_endnode                 !!对所有端节点循环
+*get,coodinate_x(i),node,i,loc,x  !!提取第i号端节点的x坐标，赋予 1维数组“coodinate_x” 的第i行
+*get,coodinate_y(i),node,i,loc,y  !!提取第i号端节点的y坐标，赋予 1维数组“coodinate_y” 的第i行
+*get,coodinate_z(i),node,i,loc,z  !!提取第i号端节点的z坐标，赋予 1维数组“coodinate_z” 的第i行
+*enddo                            !!此时“coodinate_x”“coodinate_y”“coodinate_z”里已经赋满了值
+        
+!!此时要转化为以生成关键点的命令
+        
+        
+*dim,array_prename,char,Num_endnode      !!定义名为“array_prename”的1维数组，用于储存 "K,"
+*dim,node_num,array,Num_endnode          !!定义名为“node_num”的1维数组，用于储存 端节点编号
+*dim,array_postname,char,Num_endnode,3   !!定义名为“array_postname”的3维数组，用于储存  3个","
+        
+        
+        
+        
+*do,i,1,Num_endnode             !!对所有端节点循环
+*set,array_prename(i),'K,'      !!将“K,”(这个是命令流中关键点的那个K，并非变量) 赋予 1维数组“array_prename” 的第i行
+*set,node_num(i),i              !!将“i”  赋予 1维数组“node_num” 的第i行
+*set,array_postname(i,1),','    !!将“,”  赋予 3维数组“array_postname” 的第i行的第1列
+*set,array_postname(i,2),','    !!将“,”  赋予 3维数组“array_postname” 的第i行的第2列
+*set,array_postname(i,3),','    !!将“,”  赋予 3维数组“array_postname” 的第i行的第3列
+*enddo
+        
+
+*USE,E:\ANSYS\dkd\datawrite.mac
+
+! *cfopen,E:\ANSYS\dkd\N_Eigenvalue_imperfect_coordinates.mac
+        
+! *vwrite,array_prename(1),node_num(1),array_postname(1,1),coodinate_x(1),array_postname(1,2),coodinate_y(1),array_postname(1,3),coodinate_z(1)  !!其实就是命令流N,2,2.12,2.14,2.14，此处无需用循环!!!
+! (a6,f6.0,a8,f16.8,a8,f16.8,a8,f16.8)
+        
+        
+! *cfclos
+        
+parsav,scalar,E:\ANSYS\dkd\Parameters,txt
+
+
+
+
+!=================================================================================
+!================================进行双重非线性分析===============================
+!=================================================================================
+finish
+/clear
+
+
+!!长度 单位为 m ，力单位为 N，质量单位为 kg  !! 
+
+!!定义参数
+/config,nres,99999 
+q='qk'
+k='K8'      !!凯威特几型网壳
+s=60        !!跨度
+f=6         !!矢高比倒数
+p=0.6
+js=1
+js_stop=20
+d=300        !!初始几何缺陷取跨度的1/300、1/400、1/500……
+elme_div1=1  !!杆划分的单元个数
+elme_div2=1
+
+
+nb=20                            !!双重非线性时，施加的nb倍荷载
+ibmax=3                           !!双重非线性时，弧长半径因子 上限值
+ibmin=0.00000001                  !!双重非线性时，弧长半径因子 下限值
+nbstepsub=80                      !!双重非线性时，荷载子步数
+uzb=0.5                           !!Z向位移绝对值到达uzb时，停止计算
+
+!!改变工作目录、文件名、图标名
+
+/CWD,E:\ANSYS\dkd   !!改变工作目录       
+/filename,ANALISIS_wangqiao 
+/title,ANALISIS_wangqiao  
+
+
+
+/prep7
+
+*use,E:\ANSYS\dkd\color.mac
+
+!==============================================================================!
+
+!建立节点
+
+*use,E:\ANSYS\dkd\N_Eigenvalue_imperfect_coordinates.mac
+
+
+*USE,E:\ANSYS\dkd\real_fini_1.mac
+!!引入材料非线性
+*use,E:\ANSYS\dkd\TB.mac
+*get,kp_num,kp,0,count           !!参考《参数化》48页
+
+NKPT,,all                       !!把关键点转化为节点？？？？？
+
+*USE,E:\ANSYS\dkd\Creat_Lines.mac
+
+
+allsel
+lesize,all,,,1  !!将一根线划分为elme_div1个单元
+lmesh,all               !!网格划分
+nummrg,node             !!重合节点合并
+allsel
+
+
+
+*USE,E:\ANSYS\dkd\boundaryconditions_1.MAC 
+
+
+ 
+! 06 节点荷载及重力加速度施加
+
+FCUM,ADD
+
+*use,E:\ANSYS\dkd\equiforce_dead_and_live.mac,nb
+
+acel,,,9.8*nb   !!重力加速度
+allsel
+
+
+
+!!定义静力求解选项
+
+/solu                !!进入求解层
+autots,0
+PSTRES,On
+nlgeom,1             !!打开大变形（考虑几何非线性）
+arclen,1,ibmax,ibmin !!打开弧长法，参考弧长半径最大乘子为ibmax，参考弧长半径最小乘子为ibmin（王新敏P269）  
+ARCTRM,U,uzb,0,UZ    !!设定当任一点的z向位移绝对值等于0.4时，计算终止
+ncnv,2,,5000         !!计算终止选项，当迭代次数达到5000时，计算终止（王新敏P269）
+outres,all,all       !!定义输出全部荷载步结果
+nsubst,nbstepsub     !!荷载子步定为nbstepsub步
+solve
+finish
+
+/post1 
+set,1,last 
+allsel 
+nsort,u,z,0,0,all 
+*get,num_uz,sort,0,imin 
+nsort,u,sum,0,0,all 
+/post26 
+nsol,2,num_uz,u,z 
+prod,3,2,,,num_uz,,,-1
+prod,4,1,,,F,,,20
+xvar,3
+plvar,4

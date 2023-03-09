@@ -1,0 +1,7 @@
+*cfopen,E:\ANSYS\dkd\N_Eigenvalue_imperfect_coordinates.mac
+        
+*vwrite,array_prename(1),node_num(1),array_postname(1,1),coodinate_x(1),array_postname(1,2),coodinate_y(1),array_postname(1,3),coodinate_z(1)  !!其实就是命令流N,2,2.12,2.14,2.14，此处无需用循环!!!
+(a6,f6.0,a8,f16.8,a8,f16.8,a8,f16.8)
+        
+        
+*cfclos

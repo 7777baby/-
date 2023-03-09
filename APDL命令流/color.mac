@@ -1,0 +1,11 @@
+/vup,wn,z              !!设置Z轴竖直向上
+/eshape,0              !!关闭截面实体形状
+/psf,pres,norm,2,0,1   !!设置面荷载显示方式为箭头
+/pbf,temp,2            !!设置体荷载显示方式为箭头
+/pnum,kp,1             !!设置关键点的编号与颜色
+/pnum,elem,0           !!设置单元的编号与颜色
+/pnum,line,0           !!设置线的编号与颜色
+/pnum,area,1           !!设置面的编号与颜色
+/pnum,volu,0           !!设置体的编号与颜色
+/triad,lbot            !!关闭坐标轴在左下角显示
+/PLOPTS,DATE,0         !!不显示日期

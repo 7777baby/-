@@ -1,0 +1,109 @@
+
+
+!=================================================================================
+!================================进行双重非线性分析===============================
+!=================================================================================
+finish
+/clear
+
+
+!!长度 单位为 m ，力单位为 N，质量单位为 kg  !! 
+
+!!定义参数
+/config,nres,99999 
+q='qk'
+k='K8'      !!凯威特几型网壳
+s=60        !!跨度
+f=6         !!矢高比倒数
+p=0.6
+js=1
+js_stop=20
+d=300        !!初始几何缺陷取跨度的1/300、1/400、1/500……a
+elme_div1=1  !!杆划分的单元个数
+elme_div2=1
+
+
+nb=20                            !!双重非线性时，施加的nb倍荷载
+ibmax=4                           !!双重非线性时，弧长半径因子 上限值
+ibmin=0.00000001                  !!双重非线性时，弧长半径因子 下限值
+nbstepsub=120                      !!双重非线性时，荷载子步数
+uzb=0.5                           !!Z向位移绝对值到达uzb时，停止计算
+
+!!改变工作目录、文件名、图标名
+
+/CWD,E:\ANSYS\dkd   !!改变工作目录       
+/filename,ANALISIS_wangqiao 
+/title,ANALISIS_wangqiao  
+
+
+
+/prep7
+
+*use,E:\ANSYS\dkd\color.mac
+
+!==============================================================================!
+
+!建立节点
+
+*use,E:\ANSYS\dkd\jiedian.mac
+
+*USE,E:\ANSYS\dkd\real_fini_1.mac
+!!引入材料非线性
+! *use,E:\ANSYS\dkd\TB.mac
+*get,kp_num,kp,0,count           !!参考《参数化》48页
+
+NKPT,,all                       !!把关键点转化为节点？？？？？
+
+*USE,E:\ANSYS\dkd\Creat_Lines.mac
+
+
+allsel
+lesize,all,,,1  !!将一根线划分为elme_div1个单元
+lmesh,all               !!网格划分
+nummrg,node             !!重合节点合并
+allsel
+
+
+
+*USE,E:\ANSYS\dkd\boundaryconditions_1.MAC 
+
+
+ 
+! 06 节点荷载及重力加速度施加
+
+FCUM,ADD
+
+*use,E:\ANSYS\dkd\equiforce_dead_and_live.mac,nb
+
+acel,,,9.8*nb   !!重力加速度
+allsel
+
+
+
+!!定义静力求解选项
+
+/solu                !!进入求解层
+autots,0
+PSTRES,On
+nlgeom,1             !!打开大变形（考虑几何非线性）
+arclen,1,ibmax,ibmin !!打开弧长法，参考弧长半径最大乘子为ibmax，参考弧长半径最小乘子为ibmin（王新敏P269）  
+ARCTRM,U,uzb,0,UZ    !!设定当任一点的z向位移绝对值等于0.6时，计算终止
+ncnv,2,,5000         !!计算终止选项，当迭代次数达到5000时，计算终止（王新敏P269）
+outres,all,all       !!定义输出全部荷载步结果
+nsubst,nbstepsub     !!荷载子步定为nbstepsub步
+solve
+finish
+
+/post1 
+set,1,last 
+allsel 
+nsort,u,z,0,0,all 
+*get,num_uz,sort,0,imin 
+nsort,u,sum,0,0,all 
+/post26 
+nsol,2,num_uz,u,z 
+prod,3,2,,,num_uz,,,-1
+prod,4,1,,,F,,,20
+xvar,3
+plvar,4
+
